@@ -30,13 +30,14 @@ The `.passwords` file should have the following syntax
 
 ```
 /path/to/file : username here : password here
-/path/to/other file : username 2 here : password 2 here : realm description
+/path/to/other file : username 2 here : password 2 here
 ```
 
 Notes:
 
 - The path should not have a trailing slash
 - The password is optional
+- Realms are automatically applied for the matches
 - There is flexibility to the paths. Use `*` as a wildcard to match 1 path section. Use `**` to match unlimited path sections. See match table below
 
 | .       | /foo  | /bar  | /foo/bar |
