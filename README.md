@@ -36,6 +36,7 @@ The `.passwords` file should have the following syntax
 Notes:
 
 - The password is optional
+- Realms are automatically applied for the matches
 - There is flexibility to the paths. Use `*` as a wildcard to match 1 path section. Use `**` to match unlimited path sections. See match table below
 
 | .       | /foo  | /bar  | /foo/bar |
