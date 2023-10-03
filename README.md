@@ -18,7 +18,7 @@ The only actual use case for this that I can think of (and why I even made this 
 1. Place your site contents into a folder called `site`
 2. Create a file called `.passwords`, and enter passwords (see syntax below)
    - NOTE: Don't create this in `site/.passwords`
-3. Run `go install github.com/shadiestgoat/authServer`
+3. Run `go install github.com/shadiestgoat/authServer@latest`
 4. Run `authServer` in the directory with the `.passwords` and `site` folder
    - You can set the `PORT` env variable to change the port this server runs on, by default its 3000
    - Note - there isn't any sort implementation for htaccess (unless browsers implement it) or anything like that, its just a static file host w/ authentication for some files
