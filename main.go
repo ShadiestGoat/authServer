@@ -3,11 +3,15 @@ package main
 import (
 	"encoding/base64"
 	"io"
+	"mime"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
 	"github.com/shadiestgoat/log"
 )
@@ -26,8 +30,14 @@ func init() {
 	log.Init(log.NewLoggerPrint())
 }
 
-func serveFile(w http.ResponseWriter, path string) error {
-	f, err := os.OpenFile(path, os.O_RDONLY, 0755)
+func serveFile(w http.ResponseWriter, filePath string) error {
+	mt := mime.TypeByExtension(path.Ext(filePath))
+
+	if mt != "" {
+		w.Header().Set("Content-Type", mt)
+	}
+
+	f, err := os.OpenFile(filePath, os.O_RDONLY, 0755)
 	if err != nil {
 		return err
 	}
@@ -37,6 +47,8 @@ func serveFile(w http.ResponseWriter, path string) error {
 
 func main() {
 	r := chi.NewRouter()
+
+	r.Use(middleware.CleanPath, middleware.GetHead, middleware.StripSlashes, cors.AllowAll().Handler)
 
 	r.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
 		pathParts := prepPath(r.URL.Path)
