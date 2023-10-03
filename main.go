@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -16,13 +17,36 @@ import (
 	"github.com/shadiestgoat/log"
 )
 
-var PORT = "3000"
+const (
+	DEF_PORT = "3000"
+	DEF_MSG_404 = "Bad username/password, try again <3"
+	DEF_MSG_401 = "Sorry mate, can't find this page ://"
+)
+
+var (
+	PORT = DEF_PORT
+	MSG_404 = DEF_MSG_404
+	MSG_401 = DEF_MSG_401
+)
+
+type opt struct {
+	Env string
+	Opt *string
+}
 
 func init() {
 	godotenv.Load(".env")
 
-	if p := os.Getenv("PORT"); p != "" {
-		PORT = p
+	opts := []*opt{
+		{"PORT", &PORT},
+		{"MSG_404", &MSG_404},
+		{"MSG_401", &MSG_401},
+	}
+
+	for _, o := range opts {
+		if v, ok := os.LookupEnv(o.Env); ok {
+			*o.Opt = v 
+		}
 	}
 }
 
@@ -43,6 +67,19 @@ func serveFile(w http.ResponseWriter, filePath string) error {
 	}
 	_, err = io.Copy(w, f)
 	return err
+}
+
+func writeMsg(w http.ResponseWriter, status int, msg string, def string) {
+	w.WriteHeader(status)
+
+	if msg == "<file>" {
+		if serveFile(w, fmt.Sprint(status) + ".html") != nil {
+			w.Write([]byte(def))
+		}
+		return
+	}
+
+	w.Write([]byte(msg))
 }
 
 func main() {
@@ -77,9 +114,7 @@ func main() {
 			}
 
 			if !authSuccess {
-				w.WriteHeader(401)
-				w.Write([]byte("Auth failed <3"))
-				return
+				writeMsg(w, 401, MSG_401, DEF_MSG_401)
 			}
 		}
 
@@ -103,8 +138,7 @@ func main() {
 			return
 		}
 
-		w.WriteHeader(404)
-		w.Write([]byte("Sorry mate, can't find it ://"))
+		writeMsg(w, 404, MSG_404, DEF_MSG_404)
 	})
 
 	log.Success("Starting server on :%s", PORT)

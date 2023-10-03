@@ -57,6 +57,15 @@ If there is are 2 matches with later wildcard at different levels, then the one 
 
 In this example, `/foo/bar/*` wins.
 
+## ENV Variables
+
+As mentioned before, you can add env variables. This is supported through both the `.env` file and just regular ENV (`ENV_VAR=ENV_VAL authServer`). As mentioned before, one such variable is `PORT`, which decides which port your app runs on (default: 3000).
+
+The other 2 are a bit different - `MSG_404` and `MSG_401`. These are 2 of the response messages that server responds with. 404 is for missing pages, 401 is for responses with the incorrect username/password. Special quirk with these is that if you set them to be `<file>`, then you can write them in a file - `404.html` and `401.html` **in the root directory**.
+
+> [!NOTE]\
+> Root directory is the directory that contains your `.passwords` file and the `site` folder.
+
 ## Limitations/Quality
 
 > [!IMPORTANT]\
