@@ -115,6 +115,7 @@ func main() {
 
 			if !authSuccess {
 				writeMsg(w, 401, MSG_401, DEF_MSG_401)
+				return
 			}
 		}
 
