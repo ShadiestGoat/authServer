@@ -56,7 +56,10 @@ If there is are 2 matches with later wildcard at different levels, then the one 
 
 In this example, `/foo/bar/*` wins.
 
-## Limitations
+## Limitations/Quality
+
+> [!IMPORTANT]\
+> I created this in a rush. I do not plan on supporting this project (unless there are major bug fixes that are needed).
 
 Because I created this as a bit of a speedrun, and do not plan on doing active support for the project, there is no proper escaping. This means stuff in the `.passwords` cannot contain the string ` : `, otherwise it'll be considered the next 'section'
 Also, consecutive wildcards (`*`, `**`) aren't allowed.
