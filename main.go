@@ -99,7 +99,7 @@ func main() {
 
 		info, err = os.Stat("site" + r.URL.Path + ".html")
 		if err == nil && !info.IsDir() {
-			serveFile(w, "site" + r.URL.Path + "/index.html")
+			serveFile(w, "site" + r.URL.Path + ".html")
 			return
 		}
 
