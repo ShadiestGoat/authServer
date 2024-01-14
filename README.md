@@ -39,9 +39,12 @@ The `config.yaml` file is the primary way of configuration.
       password: string
       # optional, defaults to the path to this page
       realm: string
-   # any headers here will be sent over to the user
+   # any headers here will be sent over to the user. Values can be an array, or a string. If values are an array, then multiple headers with the same name will be sent.
    headers:
-      Example: Cookie Syntax Here Lmao
+      Example-Header-Name: Value
+      Multi-Value-Header:
+         - Value 1
+         - Value 2
    # Optional. If present, will redirect to this page.
    redirect: /abc/321
    # Optional. If present, will render the page in /abc/123, with these settings.

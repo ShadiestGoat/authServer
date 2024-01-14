@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -10,8 +11,15 @@ import (
 )
 
 type Conf struct {
+	Auth       *ConfAuth
+	Headers    http.Header
+	Redirect   string
+	FakeRender string
+}
+
+type inpConf struct {
 	Auth       *ConfAuth         `yaml:"auth,omitempty"`
-	Headers    map[string]string `yaml:"headers"`
+	Headers    map[string]yaml.Node `yaml:"headers"`
 	Redirect   string            `yaml:"redirect"`
 	FakeRender string            `yaml:"fakeRender"`
 }
@@ -62,33 +70,47 @@ func init() {
 	f, err := os.OpenFile("config.yaml", os.O_RDONLY, 0755)
 	log.FatalIfErr(err, "loading config.yaml")
 
-	var allConfig = map[string]*Conf{}
+	var allConfig = map[string]*inpConf{}
 
 	log.FatalIfErr(yaml.NewDecoder(f).Decode(allConfig), "parsing config.yaml")
 
 	for fullP, c := range allConfig {
 		rPath := cleanPath(fullP)
 
-		if c.Headers == nil {
-			c.Headers = map[string]string{}
+		headersOut := http.Header{}
+
+		if c.Headers != nil {
+			for h, n := range c.Headers {
+				switch n.Kind {
+				case yaml.SequenceNode:
+					vals := []string{}
+					log.FatalIfErr(n.Decode(&vals), "decoding header value '%v' in path '%v' (array)", fullP, h)
+
+					for _, v := range vals {
+						headersOut.Add(h, v)
+					}
+				default:
+					v := ""
+					log.FatalIfErr(n.Decode(&v), "decoding header value '%v' in path '%v' (string)", fullP, h)
+					headersOut.Add(h, v)
+				}
+			}
 		}
 
-		if c.Auth == nil {
-			continue
-		}
-
-		c.Auth.Realm = strings.TrimSpace(c.Auth.Realm)
-
-		if c.Auth.Realm == "" {
-			c.Auth.Realm = rPath
-		}
-
-		if c.FakeRender != "" {
-			c.FakeRender = cleanPath(c.FakeRender)
-		}
-
-		if c.Redirect != "" {
-			c.Redirect = cleanPath(c.Redirect)
+		if c.Auth != nil {
+			c.Auth.Realm = strings.TrimSpace(c.Auth.Realm)
+	
+			if c.Auth.Realm == "" {
+				c.Auth.Realm = rPath
+			}
+	
+			if c.FakeRender != "" {
+				c.FakeRender = cleanPath(c.FakeRender)
+			}
+	
+			if c.Redirect != "" {
+				c.Redirect = cleanPath(c.Redirect)
+			}
 		}
 
 		pathSpl := strings.Split(rPath, "/")[1:]
@@ -102,7 +124,12 @@ func init() {
 			curPath = curPath.Add(p)
 		}
 
-		curPath.Conf = c
+		curPath.Conf = &Conf{
+			Auth:       c.Auth,
+			Headers:    headersOut,
+			Redirect:   c.Redirect,
+			FakeRender: c.FakeRender,
+		}
 	}
 
 	log.Success("Loaded config!")

@@ -146,7 +146,7 @@ func main() {
 			respH := w.Header()
 
 			for h, v := range conf.Headers {
-				respH.Add(h, v)
+				respH[h] = v
 			}
 
 			if conf.Auth != nil {
