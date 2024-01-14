@@ -18,10 +18,10 @@ type Conf struct {
 }
 
 type inpConf struct {
-	Auth       *ConfAuth         `yaml:"auth,omitempty"`
+	Auth       *ConfAuth            `yaml:"auth,omitempty"`
 	Headers    map[string]yaml.Node `yaml:"headers"`
-	Redirect   string            `yaml:"redirect"`
-	FakeRender string            `yaml:"fakeRender"`
+	Redirect   string               `yaml:"redirect"`
+	FakeRender string               `yaml:"fakeRender"`
 }
 
 type ConfAuth struct {
@@ -99,15 +99,15 @@ func init() {
 
 		if c.Auth != nil {
 			c.Auth.Realm = strings.TrimSpace(c.Auth.Realm)
-	
+
 			if c.Auth.Realm == "" {
 				c.Auth.Realm = rPath
 			}
-	
+
 			if c.FakeRender != "" {
 				c.FakeRender = cleanPath(c.FakeRender)
 			}
-	
+
 			if c.Redirect != "" {
 				c.Redirect = cleanPath(c.Redirect)
 			}
