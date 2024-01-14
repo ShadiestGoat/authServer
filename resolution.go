@@ -15,9 +15,9 @@ func prepPath(pathInput string) []string {
 }
 
 // Assumes that the input here is clean
-func (p Path) Resolve(path []string) (*Auth) {
+func (p Path) Resolve(path []string) *Conf {
 	if len(path) == 0 {
-		return p.A
+		return p.Conf
 	}
 	curPath := path[0]
 
@@ -38,7 +38,7 @@ func (p Path) Resolve(path []string) (*Auth) {
 	wild2 := p.Children["**"]
 	if wild2 != nil {
 		if len(path) == 1 {
-			return wild2.A
+			return wild2.Conf
 		}
 
 		for i, part := range path {
@@ -46,7 +46,7 @@ func (p Path) Resolve(path []string) (*Auth) {
 			if r == nil {
 				continue
 			}
-			a := r.Resolve(path[i + 1:])
+			a := r.Resolve(path[i+1:])
 			if a != nil {
 				return a
 			}

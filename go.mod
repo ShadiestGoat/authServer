@@ -4,7 +4,7 @@ go 1.21.0
 
 require (
 	github.com/joho/godotenv v1.5.1
-	github.com/shadiestgoat/log v1.1.4
+	github.com/shadiestgoat/log v1.1.5
 )
 
 require (

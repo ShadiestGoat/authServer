@@ -7,37 +7,58 @@ This is a utility/example http hosting server, that has authentication for some 
 There is 1 very specific use case for this:
 
 1. You have html files, with no need for SSR
-2. You want to do basic authentication, using the default browser login alert
+2. You want to do either/or:
+   - basic authentication using the default browser login alert
+   - redirects
+   - headers
 3. You have a lot of pages that require different usernames/passwords
-4. There is no "individual user" - users have to log in using this specific password
+5. There is no "individual user" - users have to log in using this specific password
 
 The only actual use case for this that I can think of (and why I even made this in the first place) is for browser based puzzle games like notpron.
 
 ## How to use
 
 1. Place your site contents into a folder called `site`
-2. Create a file called `.passwords`, and enter passwords (see syntax below)
-   - NOTE: Don't create this in `site/.passwords`
+2. Create a file called `config.yaml`, and enter passwords (see syntax below)
 3. Run `go install github.com/shadiestgoat/authServer@latest`
-4. Run `authServer` in the directory with the `.passwords` and `site` folder
+4. Run `authServer` in the directory with the `config.yaml` and `site` folder
    - You can set the `PORT` env variable to change the port this server runs on, by default its 3000
    - Note - there isn't any sort implementation for htaccess (unless browsers implement it) or anything like that, its just a static file host w/ authentication for some files
-   - If `/foo` is requested, it will attempt both `site/foo/index.html` and `site/foo.html`
+   - There is `index.html` resolution. See file resolution sub-heading.
 
-## Password File Syntax
+## Configuration
 
-The `.passwords` file should have the following syntax
+The `config.yaml` file is the primary way of configuration.
 
+```yaml
+/path/to/page:
+   # if present, will require the user to input a username/password
+   auth:
+      username: string
+      # optional
+      password: string
+      # optional, defaults to the path to this page
+      realm: string
+   # any headers here will be sent over to the user
+   headers:
+      Example: Cookie Syntax Here Lmao
+   # Optional. If present, will redirect to this page.
+   redirect: /abc/321
+   # Optional. If present, will render the page in /abc/123, with these settings.
+   fakeRender: /abc/123
+/path/to/other/page:
+   # same syntax here
+   auth:
+      username: string
 ```
-/path/to/file : username here : password here
-/path/to/other file : username 2 here : password 2 here
-```
 
-Notes:
+## URL Rules
 
-- The password is optional
-- Realms are automatically applied for the matches
-- There is flexibility to the paths. Use `*` as a wildcard to match 1 path section. Use `**` to match unlimited path sections. See match table below
+Wildcards are supported. Use `*` as a wildcard to match 1 path section (ie. area between 2 `/`). Use `**` to match unlimited path sections. 
+The shortest match route will be used. 
+If there is are 2 matches with later wildcard at different levels, then the one with the later one wins. 
+
+See match table below
 
 | .       | /foo  | /bar  | /foo/bar |
 | :------ | :---: | :---: | :------: |
@@ -46,16 +67,41 @@ Notes:
 | /**     |   ✅   |   ✅   |    ✅     |
 | /**/bar |  :x:  |  :x:  |    ✅     |
 
-If there is a more specific or shorter pattern that is matched, then it's authentication will used.
-
-If there is are 2 matches with later wildcard at different levels, then the one with the later one wins
+Given 2 routes are defined:
 
 ```
 /foo/bar/*
 /foo/*/bar
 ```
 
-In this example, `/foo/bar/*` wins.
+Then when matching `/foo/bar/bar`, `/foo/bar/*` wins.
+
+## File Resolution
+
+There is special file-path resolution. For example, lets say `/foo` is requested.
+
+```mermaid
+flowchart TB
+
+404[Render 404]
+HExist{Does ./site/foo.html exist and is not a folder?}
+SH[Serve ./site/foo.html]
+
+Start[Request to /foo] --> BExist{Does ./site/foo exist?}
+
+BExist -->| Yes | BFolder{Is ./site/foo a folder?}
+BFolder --> | No | SB[Serve ./site/foo]
+
+BFolder --> | Yes | BFolderIndex{Does ./site/foo/index.html exist, and is not a folder?}
+BFolderIndex --> | Yes | SBFolderIndexExist[Serve ./site/foo/index.html]
+
+BFolderIndex --> | No | HExist
+
+BExist --> | No | HExist
+HExist --> | Yes | SH
+HExist --> | No | 404
+
+```
 
 ## ENV Variables
 
@@ -70,7 +116,4 @@ The other 2 are a bit different - `MSG_404` and `MSG_401`. These are 2 of the re
 
 > [!IMPORTANT]\
 > I created this in a rush. I do not plan on supporting this project (unless there are major bug fixes that are needed).
-
-Because I created this as a bit of a speedrun, and do not plan on doing active support for the project, there is no proper escaping. This means stuff in the `.passwords` cannot contain the string ` : `, otherwise it'll be considered the next 'section'
-Also, consecutive wildcards (`*`, `**`) aren't allowed.
 

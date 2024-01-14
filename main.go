@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -18,13 +19,13 @@ import (
 )
 
 const (
-	DEF_PORT = "3000"
-	DEF_MSG_404 = "Bad username/password, try again <3"
-	DEF_MSG_401 = "Sorry mate, can't find this page ://"
+	DEF_PORT    = "3000"
+	DEF_MSG_401 = "Bad username/password, try again <3"
+	DEF_MSG_404 = "Sorry mate, can't find this page ://"
 )
 
 var (
-	PORT = DEF_PORT
+	PORT    = DEF_PORT
 	MSG_404 = DEF_MSG_404
 	MSG_401 = DEF_MSG_401
 )
@@ -45,13 +46,9 @@ func init() {
 
 	for _, o := range opts {
 		if v, ok := os.LookupEnv(o.Env); ok {
-			*o.Opt = v 
+			*o.Opt = v
 		}
 	}
-}
-
-func init() {
-	log.Init(log.NewLoggerPrint())
 }
 
 func serveFile(w http.ResponseWriter, filePath string) error {
@@ -73,13 +70,65 @@ func writeMsg(w http.ResponseWriter, status int, msg string, def string) {
 	w.WriteHeader(status)
 
 	if msg == "<file>" {
-		if serveFile(w, fmt.Sprint(status) + ".html") != nil {
+		if serveFile(w, fmt.Sprint(status)+".html") != nil {
 			w.Write([]byte(def))
 		}
 		return
 	}
 
 	w.Write([]byte(msg))
+}
+
+func authIsGood(h string, a *ConfAuth) bool {
+	if h == "" {
+		return false
+	}
+
+	authS := strings.SplitN(h, " ", 2)
+	if len(authS) != 2 || authS[0] != "Basic" {
+		return false
+	}
+
+	b, err := base64.StdEncoding.DecodeString(authS[1])
+	if err != nil {
+		return false
+	}
+
+	spl := strings.Split(string(b), ":")
+	return len(spl) == 2 && spl[0] == a.Username && spl[1] == a.Password
+}
+
+func fileIsServable(p string) bool {
+	info, err := os.Stat(p)
+	return err == nil && !info.IsDir()
+}
+
+func getPageFile(p string) string {
+	p = path.Join("site", p)
+
+	info, err := os.Stat(p)
+	if err == nil {
+		if info.IsDir() {
+			p = path.Join(p, "index.html")
+			if fileIsServable(p) {
+				return p
+			}
+		} else {
+			return p
+		}
+	}
+
+	if !errors.Is(err, os.ErrNotExist) {
+		log.Warn("Err while stat for '%v': %v", p, err)
+	}
+
+	p += ".html"
+
+	if fileIsServable(p) {
+		return p
+	}
+
+	return ""
 }
 
 func main() {
@@ -89,57 +138,43 @@ func main() {
 
 	r.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
 		pathParts := prepPath(r.URL.Path)
-		auth := authRoot.Resolve(pathParts)
+		conf := authRoot.Resolve(pathParts)
 
-		if auth != nil {
-			h := w.Header()
-			headerThing := "Basic realm=" + auth.Realm
+		var pageToRender = r.URL.Path
 
-			h.Set("WWW-Authenticate", headerThing)
-			
-			reqAuth := r.Header.Get("Authorization")
-			authSuccess := false
+		if conf != nil {
+			respH := w.Header()
 
-			if reqAuth != "" {
-				authS := strings.Split(reqAuth, " ")
-				if len(authS) == 2 {
-					b, err := base64.StdEncoding.DecodeString(authS[1])
-					if err == nil {
-						spl := strings.Split(string(b), ":")
-						if len(spl) == 2 && spl[0] == auth.Name && spl[1] == auth.Password {
-							authSuccess = true
-						}
-					}
-				}
+			for h, v := range conf.Headers {
+				respH.Add(h, v)
 			}
 
-			if !authSuccess {
-				writeMsg(w, 401, MSG_401, DEF_MSG_401)
-				return
-			}
-		}
+			if conf.Auth != nil {
+				respH.Set("WWW-Authenticate", "Basic realm="+conf.Auth.Realm)
 
-		info, err := os.Stat("site" + r.URL.Path)
-		if err == nil {
-			if info.IsDir() {
-				info, err := os.Stat("site" + r.URL.Path + "/index.html")
-				if err == nil && !info.IsDir() {
-					serveFile(w, "site" + r.URL.Path + "/index.html")
+				if !authIsGood(r.Header.Get("Authorization"), conf.Auth) {
+					writeMsg(w, 401, MSG_401, DEF_MSG_401)
 					return
 				}
-			} else {
-				serveFile(w, "site" + r.URL.Path)
+			}
+
+			if conf.Redirect != "" {
+				http.Redirect(w, r, conf.Redirect, 307)
 				return
+			}
+
+			if conf.FakeRender != "" {
+				pageToRender = conf.FakeRender
 			}
 		}
 
-		info, err = os.Stat("site" + r.URL.Path + ".html")
-		if err == nil && !info.IsDir() {
-			serveFile(w, "site" + r.URL.Path + ".html")
-			return
+		file := getPageFile(pageToRender)
+
+		if file == "" {
+			writeMsg(w, 404, MSG_404, DEF_MSG_404)
 		}
 
-		writeMsg(w, 404, MSG_404, DEF_MSG_404)
+		serveFile(w, file)
 	})
 
 	log.Success("Starting server on :%s", PORT)

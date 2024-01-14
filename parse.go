@@ -6,16 +6,24 @@ import (
 	"strings"
 
 	"github.com/shadiestgoat/log"
+	"gopkg.in/yaml.v3"
 )
 
-type Auth struct {
-	Name     string
-	Password string
-	Realm    string
+type Conf struct {
+	Auth       *ConfAuth         `yaml:"auth,omitempty"`
+	Headers    map[string]string `yaml:"headers"`
+	Redirect   string            `yaml:"redirect"`
+	FakeRender string            `yaml:"fakeRender"`
+}
+
+type ConfAuth struct {
+	Username string `yaml:"username,omitempty"`
+	Password string `yaml:"password,omitempty"`
+	Realm    string `yaml:"realm"`
 }
 
 type Path struct {
-	A        *Auth            `json:"auth,omitempty"`
+	Conf     *Conf            `json:"auth,omitempty"`
 	Parent   *Path            `json:"-"`
 	Children map[string]*Path `json:"children,omitempty"`
 }
@@ -35,51 +43,66 @@ func (p *Path) Add(part string) *Path {
 	return p.Children[part]
 }
 
+func cleanPath(p string) string {
+	if p == "" {
+		return p
+	}
+	p = path.Clean(p)
+
+	if p == "." {
+		return "/"
+	}
+
+	return p
+}
+
 func init() {
-	f, _ := os.ReadFile(".passwords")
+	log.Init(log.NewLoggerPrint(), log.NewLoggerFileComplex("serverLogs/log", log.FILE_DESCENDING, 5))
 
-	log.Debug("Loading config...")
+	f, err := os.OpenFile("config.yaml", os.O_RDONLY, 0755)
+	log.FatalIfErr(err, "loading config.yaml")
 
-	for _, l := range strings.Split(string(f), "\n") {
-		l = strings.TrimSpace(l)
-		if l == "" {
+	var allConfig = map[string]*Conf{}
+
+	log.FatalIfErr(yaml.NewDecoder(f).Decode(allConfig), "parsing config.yaml")
+
+	for fullP, c := range allConfig {
+		rPath := cleanPath(fullP)
+
+		if c.Headers == nil {
+			c.Headers = map[string]string{}
+		}
+
+		if c.Auth == nil {
 			continue
 		}
 
-		segments := strings.SplitN(l, " : ", 4)
-		if len(segments) < 2 || len(segments) > 3 {
-			log.Fatal("Needs to have 2 or 3 segments, got '%s' (%d)", l, len(segments))
+		c.Auth.Realm = strings.TrimSpace(c.Auth.Realm)
+
+		if c.Auth.Realm == "" {
+			c.Auth.Realm = rPath
 		}
 
-		if len(segments) == 2 {
-			segments = append(segments, "")
+		if c.FakeRender != "" {
+			c.FakeRender = cleanPath(c.FakeRender)
 		}
 
-		cleanPath := path.Clean(segments[0])
-
-		if cleanPath == "." {
-			cleanPath = "/"
+		if c.Redirect != "" {
+			c.Redirect = cleanPath(c.Redirect)
 		}
 
-		pathSpl := strings.Split(cleanPath, "/")[1:]
+		pathSpl := strings.Split(rPath, "/")[1:]
 		curPath := authRoot
 
 		for _, p := range pathSpl {
 			if p == "" {
 				continue
 			}
-			if p == ".." {
-				curPath = curPath.Parent
-			} else if p != "." {
-				curPath = curPath.Add(p)
-			}
+
+			curPath = curPath.Add(p)
 		}
 
-		curPath.A = &Auth{
-			Name:     segments[1],
-			Password: segments[2],
-			Realm:    cleanPath,
-		}
+		curPath.Conf = c
 	}
 
 	log.Success("Loaded config!")
