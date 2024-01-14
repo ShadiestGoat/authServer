@@ -1,4 +1,4 @@
-module github.com/shadiestgoat/authServer
+module github.com/shadiestgoat/authServer/v2
 
 go 1.21.0
 
