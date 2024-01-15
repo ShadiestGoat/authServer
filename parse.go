@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 	"os"
 	"path"
@@ -68,7 +69,13 @@ func init() {
 	log.Init(log.NewLoggerPrint(), log.NewLoggerFileComplex("serverLogs/log", log.FILE_DESCENDING, 5))
 
 	f, err := os.OpenFile("config.yaml", os.O_RDONLY, 0755)
-	log.FatalIfErr(err, "loading config.yaml")
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return
+		}
+
+		log.FatalIfErr(err, "loading config.yaml")
+	}
 
 	var allConfig = map[string]*inpConf{}
 
