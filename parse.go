@@ -81,18 +81,17 @@ func init() {
 
 		if c.Headers != nil {
 			for h, n := range c.Headers {
-				switch n.Kind {
-				case yaml.SequenceNode:
-					vals := []string{}
-					log.FatalIfErr(n.Decode(&vals), "decoding header value '%v' in path '%v' (array)", fullP, h)
+				vals := []string{}
+				valStr := ""
 
+				if err := n.Decode(&vals); err == nil {
 					for _, v := range vals {
 						headersOut.Add(h, v)
 					}
-				default:
-					v := ""
-					log.FatalIfErr(n.Decode(&v), "decoding header value '%v' in path '%v' (string)", fullP, h)
-					headersOut.Add(h, v)
+				} else if err := n.Decode(&valStr); err == nil {
+					headersOut.Add(h, valStr)
+				} else {
+					log.Fatal("Failed to decode header '%v' in path '%v'!", h, fullP)
 				}
 			}
 		}
