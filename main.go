@@ -145,10 +145,6 @@ func main() {
 		if conf != nil {
 			respH := w.Header()
 
-			for h, v := range conf.Headers {
-				respH[h] = v
-			}
-
 			if conf.Auth != nil {
 				respH.Set("WWW-Authenticate", "Basic realm="+conf.Auth.Realm)
 
@@ -156,6 +152,10 @@ func main() {
 					writeMsg(w, 401, MSG_401, DEF_MSG_401)
 					return
 				}
+			}
+
+			for h, v := range conf.Headers {
+				respH[h] = v
 			}
 
 			if conf.Redirect != "" {
