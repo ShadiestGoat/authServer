@@ -7,6 +7,9 @@ import (
 
 func prepPath(pathInput string) []string {
 	clean := path.Clean(pathInput)
+	if path.Ext(pathInput) == ".html" {
+		clean = clean[:len(clean)-5]
+	}
 	if clean == "." || clean == "/" {
 		return []string{}
 	}
